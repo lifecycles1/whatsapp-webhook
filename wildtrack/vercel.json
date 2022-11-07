@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/saveuser", "destination": "https://whatsapp-webhook-nodejs-vuejs.nw.r.appspot.com/saveuser" }]
+}
