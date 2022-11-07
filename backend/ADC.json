@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "whatsapp-webhook-nodejs-vuejs",
+  "private_key_id": "403308bcb1488085502e07d12590bfc242cec0ec",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDkrSZNb7yBon/F\nxnTT8ZZ1PPcEZi8kaG1fHJeugRUgJMYboLnmycX8dUGiRR4uOtQILQgJSDvmBPKz\nhhSz3YVoE/IlXCLnYLPLETKfVMDRkFArGMX7t9f6G/FLkr8fA16BHeFgz0CoanJk\n2sJgh2SWz0VKqEh2YnxohqnVz6br13aI5S0L52ByGd63YK0U/VwpbLBZhbcVty7Q\nwn5s7TdgpSssWAb/wIoKbsFXxUuaTFYZ6whkzCCbjThi/gVvze1IyI3NlEZH/79C\nsNqmDT9Ly0iauu4Cnyeteu5ciql+v94vxEjVz3L2PUx98jWGwt9cBU7qXse3/72n\nwoYp1uqjAgMBAAECggEAcNrxLcNItXOUem9MZfLzLa3mPLIPbvjojUmHpDQJUIFF\nkgn65SbMQqE9wI8661bWIKjUr/wJr6Xef3HbEr9vIOPDG+QCR81mPgAhSxfhRyth\nHTvPLcDX4pPavFDSaMRZZgBwo73064kJJrP9vPTk1Da7vDIb/Ozy+AUJmT8vYnFW\n/M9Nzk54xkyo3aMXnsB/G5LgPl0E8X6LvbaI5HUFwZDlc1Wx535G3wzQZiTkJFJz\nPxMmyU/SgXi20NguFqIhg2MIzeM3O0r9USDuICcsWFDhBw6vQ2JBssvGwEyO3n4z\npT6XACScIKYtpoCxS2w7bRVUuv8UAUH90voHi5Ht8QKBgQD8+0HtGV8WqJ16ZXvg\nvJiTqKRGpRQsO6tn0o4sMWS38Ite5GwqVMbvtEZBtSusBwrmussrU+5JJj/LeVcB\nevSY/Dqy9181DYK9ZWjA1DMP+Gf2ko5kYNBRQ3OwB9Q7Q94U6LDY/l3mguWyIx/7\nqmnz/0m4YyRj9IP/dWSkV2Eu8wKBgQDnZ6awHlDwD19LffYG+CBJn9yDvEsMlD9R\nc+ADbC8DPgp5ba/RDhXujtEHp8g6kNc+DobFoTdYqDDAPeNiTBg7nqwYv7BY1fMj\nalBTl0dVT2GVlleZzk9ikLideRd1rn4OQO+ag37sQ5SYBryu0gCOnodHbDo6OQui\nO7EZw8ohkQKBgBJrqS0+f7ICrRTQduiyUtnNmcibFJDz91Mj/b4yCodqOHu8XjPm\n4GVr1wHJ01g/WwfZ6hlJjzw8UMDcIP22mkDZfNyzLneKeE6aJ7qCuQUcrVVC7qNY\neVKxeqcCqu11z6HuH5JtUyEJvvftntKQYg6mNBP9BBVTJJlhTua4hhcJAoGBAIl5\ny87ABAfKqiu4ZqzXRp9W6PQerluHy2JBvClsYTXE6wYfAx/pBWCX2ll49XzNxgJp\nMOpCkBYMvgHIAsnIOXFaIBYH8+WjHfLBW31913Q4V9o92kdXCVSec/+iDCzvAJbJ\nP1AFpScKM0JqZjhaLNiOGAJ3qtQiReYZHmsXJYPxAoGAR+X+itNv9Q45V1ne4FSe\nB/vsLA/y6S4uH9RuLGl/hGI7apiQ3gG3+NX8V7lbUP/lLgvOwCFWYg0VJa0in78/\n/oL0mZ7Fs6k7yNVEgOMVPAIiclrbeN1H1tv+3baXAysvsnHIt2Tbrq4UAOVEi9Bh\nx22jKd+9waOb+2dMSH6kpfM=\n-----END PRIVATE KEY-----\n",
+  "client_email": "whatsapp-webhook-nodejs-vuejs@appspot.gserviceaccount.com",
+  "client_id": "102499850798273110853",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/whatsapp-webhook-nodejs-vuejs%40appspot.gserviceaccount.com"
+}
