@@ -80,8 +80,8 @@ export function datastore() {
     },
   ];
 
-  const mapDay = { zoom: 8, center: { lat: 54.98, lng: -1.61 }, mapTypeId: "terrain", styles: [] };
-  const mapNight = { zoom: 8, center: { lat: 54.98, lng: -1.61 }, mapTypeId: "terrain", styles: nm };
+  const mapDay = { zoom: 8, center: { lat: 51.88, lng: -1.07 }, mapTypeId: "terrain", styles: [] };
+  const mapNight = { zoom: 8, center: { lat: 51.88, lng: -1.07 }, mapTypeId: "terrain", styles: nm };
 
   const silver = [
     {

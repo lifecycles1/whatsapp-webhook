@@ -53,9 +53,9 @@
     // 2.1 post user via backend
     const res = await axios
       .post("/saveuser", {
-        //  ^^^ this line is for localhost with config proxy
+        //  ^^^ this line is for localhost with config proxy or vercel deployment
         // .post("/api/saveuser", {
-        //   ^^^ this line is for netlify
+        //   ^^^ this line is for netlify deployment
         firstname: signup.firstname,
         lastname: signup.lastname,
         telephone: signup.telephone,

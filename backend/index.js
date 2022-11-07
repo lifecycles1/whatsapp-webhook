@@ -15,9 +15,9 @@ const spreadsheetId = process.env.SPREADSHEET;
 const authenticate = getauthenticatedclient();
 var publicUrl;
 
-// const test = async () => {};
+const test = async () => {};
 
-// test();
+test();
 
 router.get("/messages", (req, res) => {
   try {
@@ -83,18 +83,27 @@ router.post("/messages", async (req, res) => {
         // /////////////////////////////////////////////////
         if (/\d/.test(text)) {
           //retrieve original coordinates from the latest message sent by the same number
-          const getlastindex = await axios.get(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?majorDimension=rows&ranges=webhook!A:J&key=${API_KEY}`);
-          const arr = getlastindex.data.valueRanges[0].values;
-          var r;
-          for (let i = arr.length - 1; i >= 0; i--) {
-            if (arr[i][1].toString() === telephone && arr[i][4].toString() !== "") {
-              r = i + 1;
-              break;
-            }
-          }
-          const get = await axios.get(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/webhook!E${r}:F${r}?key=${API_KEY}`);
-          const originalLat = parseFloat(get.data?.values?.[0]?.[0]);
-          const originalLng = parseFloat(get.data?.values?.[0]?.[1]);
+          var originalLat;
+          var originalLng;
+          authenticate.then((client) => {
+            client.spreadsheets.values
+              .get({ spreadsheetId, range: `webhook!A:J`, majorDimension: "rows" })
+              .then((res) => {
+                const arr = res.data.values;
+                var r;
+                for (let i = arr.length - 1; i >= 0; i--) {
+                  if (arr[i][1].toString() === telephone && arr[i][4].toString() !== "") {
+                    r = i + 1;
+                    break;
+                  }
+                }
+                originalLat = parseFloat(arr?.[r]?.[4]);
+                originalLng = parseFloat(arr?.[r]?.[5]);
+              })
+              .catch((err) => {
+                console.log("Error while updating the webhook-sheet with an image url", err);
+              });
+          });
 
           //extract numbers from message to use as distance
           const currentDistance = parseInt(text?.match(/\d+/g).join(""));
@@ -161,7 +170,8 @@ router.post("/messages", async (req, res) => {
             .catch((err) => {
               console.log("something went wrong while fetching the weather", err);
             });
-          // if test message contains no numbers just append to all board(webhook sheet)
+
+          // if text message contains no numbers just append to all board(webhook sheet)
         } else if (!/\d/.test(text)) {
           //append random/normal/any text message to webhook sheet
           authenticate.then((client) => {
