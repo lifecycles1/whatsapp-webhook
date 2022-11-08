@@ -7,10 +7,9 @@ require("dotenv").config();
 const axios = require("axios");
 const { format } = require("util");
 const { Storage } = require("@google-cloud/storage");
-const { gravityCreds, bearings, getBearing, convertTextMsgToCoordinates, getauthenticatedclient } = require("./utils");
+const { getBearing, convertTextMsgToCoordinates, getauthenticatedclient } = require("./utils");
 const storage = new Storage();
 const bucket = storage.bucket(process.env.GCLOUD_STORAGE_BUCKET);
-const API_KEY = process.env.GOOGLE_API_KEY;
 const spreadsheetId = process.env.SPREADSHEET;
 const authenticate = getauthenticatedclient();
 var publicUrl;
@@ -83,8 +82,6 @@ router.post("/messages", async (req, res) => {
         // /////////////////////////////////////////////////
         if (/\d/.test(text)) {
           //retrieve original coordinates from the latest message sent by the same number
-          var originalLat;
-          var originalLng;
           authenticate.then((client) => {
             client.spreadsheets.values
               .get({ spreadsheetId, range: `webhook!A:J`, majorDimension: "rows" })
@@ -93,95 +90,78 @@ router.post("/messages", async (req, res) => {
                 var r;
                 for (let i = arr.length - 1; i >= 0; i--) {
                   if (arr[i][1].toString() === telephone && arr[i][4].toString() !== "") {
-                    r = i + 1;
+                    r = i;
                     break;
                   }
                 }
-                originalLat = parseFloat(arr?.[r]?.[4]);
-                originalLng = parseFloat(arr?.[r]?.[5]);
+                const originalLat = parseFloat(arr[r][4]);
+                const originalLng = parseFloat(arr[r][5]);
+
+                //extract numbers from message to use as distance
+                const currentDistance = parseInt(text?.match(/\d+/g).join(""));
+                //extract bearing from message to use as bearing
+                const messageDirections = text
+                  .match(/\p{Lu}/gu)
+                  ?.join("")
+                  .substring(1);
+                //use bearing to get its degrees from local object
+                const currentBearing = getBearing(messageDirections);
+
+                //calculate new coordinates
+                const [sightLat, sightLng] = convertTextMsgToCoordinates(currentDistance, currentBearing, originalLat, originalLng);
+
+                // call the weather api and insert along with the sight coordinates into MAP DB
+                // //////////////////////////////////////////////////
+                const startdate = new Date(DateTime).toISOString();
+                // const setter = new Date();
+                // const enddate = new Date(setter.setDate(setter.getDate() + n)).toISOString()
+                axios
+                  .get(`https://nonlinearsystems_raychev:KK11r6h8dK@api.meteomatics.com/${startdate}/wind_dir_10m:d,wind_speed_10m:ms,t_2m:C,precip_1h:mm,weather_symbol_1h:idx/${originalLat},${originalLng}/json`)
+                  .then((res) => {
+                    //in degrees
+                    const winddir = res.data?.data?.[0].coordinates?.[0].dates?.[0].value;
+                    //in meters/per second
+                    const windspeed = res.data?.data?.[1].coordinates?.[0].dates?.[0].value;
+                    //in celsius
+                    const temperature = res.data?.data?.[2].coordinates?.[0].dates?.[0].value;
+                    //in millimeter (equivalent to litres per square meter)
+                    const precipitation = res.data?.data?.[3].coordinates?.[0].dates?.[0].value;
+                    //clouds need further processing
+                    const impression = res.data?.data?.[4].coordinates?.[0].dates?.[0].value;
+                    //append map db
+                    client.spreadsheets.values
+                      .append({ spreadsheetId, range: "MAP DB!A:AE", valueInputOption: "RAW", resource: { values: [[user, telephone, DateTime, originalLat, originalLng, text, sightLat, sightLng, null, null, null, null, null, winddir, windspeed, temperature, precipitation, impression]] } })
+                      .then((res) => {
+                        console.log("appended MAP DB with a loc-sight-weather message", res.data);
+                      })
+                      .catch((err) => {
+                        console.log("Error while appending the MAP DB with a loc-sight-weather message", err);
+                      });
+                    // append webhook sheet
+                    client.spreadsheets.values
+                      .append({ spreadsheetId, range: "webhook!A:G", valueInputOption: "RAW", resource: { values: [[user, telephone, DateTime, event, null, null, text]] } })
+                      .then((res) => {
+                        console.log("appended webhook sheet with a bearing message", res.data);
+                      })
+                      .catch((err) => {
+                        console.log("Error while appending the webhook sheet with a bearing message", err);
+                      });
+                  })
+                  .catch((err) => {
+                    console.log("something went wrong while fetching the weather", err);
+                  });
               })
               .catch((err) => {
-                console.log("Error while updating the webhook-sheet with an image url", err);
+                console.log("Error while fetching original coordinates", err);
               });
           });
-
-          //extract numbers from message to use as distance
-          const currentDistance = parseInt(text?.match(/\d+/g).join(""));
-          //extract bearing from message to use as bearing
-          const messageDirections = text
-            .match(/\p{Lu}/gu)
-            ?.join("")
-            .substring(1);
-          //use bearing to get its degrees from local object
-          const currentBearing = getBearing(messageDirections);
-
-          //calculate new coordinates
-          const [sightLat, sightLng] = convertTextMsgToCoordinates(currentDistance, currentBearing, originalLat, originalLng);
-
-          // call the weather api and insert along with the sight coordinates into MAP DB
-          // //////////////////////////////////////////////////
-          const startdate = new Date(DateTime).toISOString();
-          // const setter = new Date();
-          // const enddate = new Date(setter.setDate(setter.getDate() + n)).toISOString()
-          await axios
-            .get(`https://nonlinearsystems_raychev:KK11r6h8dK@api.meteomatics.com/${startdate}/wind_dir_10m:d,wind_speed_10m:ms,t_2m:C,precip_1h:mm,weather_symbol_1h:idx/${originalLat},${originalLng}/json`)
-            .then((res) => {
-              //in degrees
-              const winddir = res.data?.data?.[0].coordinates?.[0].dates?.[0].value;
-              //in meters/per second
-              const windspeed = res.data?.data?.[1].coordinates?.[0].dates?.[0].value;
-              //in celsius
-              const temperature = res.data?.data?.[2].coordinates?.[0].dates?.[0].value;
-              //in millimeter (equivalent to litres per square meter)
-              const precipitation = res.data?.data?.[3].coordinates?.[0].dates?.[0].value;
-              //clouds need further processing
-              const impression = res.data?.data?.[4].coordinates?.[0].dates?.[0].value;
-              authenticate.then((client) => {
-                //append map db
-                client.spreadsheets.values
-                  .append({
-                    spreadsheetId,
-                    range: "MAP DB!A:AE",
-                    valueInputOption: "RAW",
-                    resource: { values: [[user, telephone, DateTime, originalLat, originalLng, text, sightLat, sightLng, null, null, null, null, null, winddir, windspeed, temperature, precipitation, impression]] },
-                  })
-                  .then((res) => {
-                    console.log("appended MAP DB with a loc-sight-weather message", res.data);
-                  })
-                  .catch((err) => {
-                    console.log("Error while appending the MAP DB with a loc-sight-weather message", err);
-                  });
-                // append webhook sheet
-                client.spreadsheets.values
-                  .append({
-                    spreadsheetId,
-                    range: "webhook!A:G",
-                    valueInputOption: "RAW",
-                    resource: { values: [[user, telephone, DateTime, event, null, null, text]] },
-                  })
-                  .then((res) => {
-                    console.log("appended webhook sheet with a bearing message", res.data);
-                  })
-                  .catch((err) => {
-                    console.log("Error while appending the webhook sheet with a bearing message", err);
-                  });
-              });
-            })
-            .catch((err) => {
-              console.log("something went wrong while fetching the weather", err);
-            });
 
           // if text message contains no numbers just append to all board(webhook sheet)
         } else if (!/\d/.test(text)) {
           //append random/normal/any text message to webhook sheet
           authenticate.then((client) => {
             client.spreadsheets.values
-              .append({
-                spreadsheetId,
-                range: "webhook!A:G",
-                valueInputOption: "RAW",
-                resource: { values: [[user, telephone, DateTime, event, null, null, text]] },
-              })
+              .append({ spreadsheetId, range: "webhook!A:G", valueInputOption: "RAW", resource: { values: [[user, telephone, DateTime, event, null, null, text]] } })
               .then((res) => {
                 console.log("appended webhook sheet with a bearing message", res.data);
               })
@@ -210,14 +190,7 @@ router.post("/messages", async (req, res) => {
 
       authenticate.then((client) => {
         client.spreadsheets.values
-          .append({
-            spreadsheetId,
-            range: "webhook!A:G",
-            valueInputOption: "RAW",
-            resource: {
-              values: [[user, telephone, DateTime, event, latitude, longitude]],
-            },
-          })
+          .append({ spreadsheetId, range: "webhook!A:G", valueInputOption: "RAW", resource: { values: [[user, telephone, DateTime, event, latitude, longitude]] } })
           .then((res) => {
             console.log("appended webhook-sheet with a location message", res.data);
           })
@@ -237,75 +210,70 @@ router.post("/messages", async (req, res) => {
       const event = type;
       const ImageText = req.body?.entry?.[0].changes?.[0].value?.messages?.[0].image?.caption ? req.body?.entry?.[0].changes?.[0].value?.messages?.[0].image?.caption : "no imagetext";
 
+      //post image message to sheets with the cell for the image still "..loading"
       await authenticate.then((client) => {
         client.spreadsheets.values
-          .append({
-            spreadsheetId,
-            range: "webhook!A:I",
-            valueInputOption: "RAW",
-            resource: { values: [[user, telephone, DateTime, event, null, null, null, "loading image url...", ImageText]] },
-          })
+          .append({ spreadsheetId, range: "webhook!A:I", valueInputOption: "RAW", resource: { values: [[user, telephone, DateTime, event, null, null, null, "loading image url...", ImageText]] } })
           .then((res) => {
             console.log("appended webhook-sheet with an image message", res.data);
+            //this line extracts the row number from where it just inserted the message so we can
+            //append image url when we download it from facebook(whatsapp) and store it in our cloud bucket
+            const r = res.data.updates.updatedRange.split("!").pop().split(":")[0].match(/\d+/g)[0];
+
+            // retrieving media download url
+            axios
+              .get(`https://graph.facebook.com/v14.0/${image_id}`, {
+                headers: { Authorization: `Bearer ${process.env.TOKEN}` },
+              })
+              .then((response) => {
+                const tempUrl = response.data.url;
+                // downloading in binary mode (as stream)
+                axios
+                  .get(tempUrl, {
+                    headers: { Authorization: `Bearer ${process.env.TOKEN}` },
+                    responseType: "stream",
+                  })
+                  .then((response) => {
+                    const imageName = Date.now() + "_image.jpg";
+                    //processing the stream into cloud's tmp folder
+                    response.data.pipe(
+                      fs
+                        .createWriteStream(`/tmp/${imageName}`)
+                        .on("error", (err) => console.log("error while writing into tmp storage", err))
+                        .on("finish", () => {
+                          //reading the stream and writing it into google cloud storage bucket
+                          const readStream = fs.createReadStream(`/tmp/${imageName}`);
+                          const writeToGCP = bucket.file(imageName).createWriteStream();
+                          readStream
+                            .pipe(writeToGCP)
+                            .on("error", (err) => console.log("error uploading to cloud storage", err))
+                            .on("finish", async () => {
+                              //creating a publicly accessible url for the image from our bucket
+                              console.log("SAVED IN CLOUD STORAGE");
+                              publicUrl = format(`https://storage.cloud.google.com/${bucket.name}/${imageName}`);
+
+                              //posting the public url into the same row in google sheets where we inserted the message
+                              client.spreadsheets.values
+                                .update({ spreadsheetId, range: `webhook!H${r}`, valueInputOption: "RAW", resource: { values: [[publicUrl]] } })
+                                .then((res) => {
+                                  console.log("Updated webhook-sheet with an image url", res.data);
+                                })
+                                .catch((err) => {
+                                  console.log("Error while updating the webhook-sheet with an image url", err);
+                                });
+                            });
+                        })
+                    );
+                  })
+                  .catch((err) => console.log("error while downloading binary data from download image url given by graph.facebook: ", err));
+              })
+              .catch((err) => console.log("error while getting download image url from graph.facebook: ", err));
           })
           .catch((err) => {
             console.log("Error while updating the sheet from an image message", err);
           });
       });
 
-      const getlastind = await axios.get(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/webhook!D:D?key=${API_KEY}`);
-      const last = getlastind.data.values.length + 1;
-      console.log("last row index", last);
-
-      await axios
-        .get(`https://graph.facebook.com/v14.0/${image_id}`, {
-          headers: { Authorization: `Bearer ${process.env.TOKEN}` },
-        })
-        .then((response) => {
-          const tempUrl = response.data.url;
-          axios
-            .get(tempUrl, {
-              headers: { Authorization: `Bearer ${process.env.TOKEN}` },
-              responseType: "stream",
-            })
-            .then((response) => {
-              const imageName = Date.now() + "_image.jpg";
-              response.data.pipe(
-                fs
-                  .createWriteStream(`/tmp/${imageName}`)
-                  .on("error", (err) => console.log("error while writing into tmp storage", err))
-                  .on("finish", () => {
-                    const readStream = fs.createReadStream(`/tmp/${imageName}`);
-                    const writeToGCP = bucket.file(imageName).createWriteStream();
-                    readStream
-                      .pipe(writeToGCP)
-                      .on("error", (err) => console.log("error uploading to cloud storage", err))
-                      .on("finish", async () => {
-                        console.log("SAVED IN CLOUD STORAGE");
-                        publicUrl = format(`https://storage.cloud.google.com/${bucket.name}/${imageName}`);
-
-                        authenticate.then((client) => {
-                          client.spreadsheets.values
-                            .update({
-                              spreadsheetId,
-                              range: `webhook!H${last}`,
-                              valueInputOption: "RAW",
-                              resource: { values: [[publicUrl]] },
-                            })
-                            .then((res) => {
-                              console.log("Updated webhook-sheet with an image url", res.data);
-                            })
-                            .catch((err) => {
-                              console.log("Error while updating the webhook-sheet with an image url", err);
-                            });
-                        });
-                      });
-                  })
-              );
-            })
-            .catch((err) => console.log("error while downloading binary data from download image url given by graph.facebook: ", err));
-        })
-        .catch((err) => console.log("error while getting download image url from graph.facebook: ", err));
       return res.sendStatus(200);
     }
     return res.sendStatus(200);
@@ -315,6 +283,11 @@ router.post("/messages", async (req, res) => {
   }
 });
 
+// 1. front end posts the user to this endpoint 2. and this endpoint posts it to google sheets
+// this process spares the need to attach an extra oauth library in the frontend
+// in order to post to google sheets since API keys are deprecated for most calls -
+// you most likely need an oauth flow and user consent in 99% of the situations
+// this node server has been authenticated (here and in the above endpoint) with a promptless oauth flow that doesn't require user interaction
 router.post("/saveuser", async (req, res) => {
   console.log("/saveuser", req.body);
   const firstname = req.body?.firstname;

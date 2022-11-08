@@ -14,7 +14,8 @@
     lastname: "",
     telephone: "",
     username: "",
-    site_list: "G001,W001,W002,AB01,SG01,B001",
+    //assign a default site list to user upon sign up
+    site_list: "A,B,C,D,E,F",
     password: "",
   });
 
@@ -24,6 +25,7 @@
       alert("Please fill in all fields");
       return;
     }
+    //not sure why these axios calls to these type of google sheets endpoints stopped working in node v16 as of the beginning of November 2022 (additional information - the more complex calls require oauth authentication anyhow but the simple get requests are still working with API keys so that is why I kept this format. The node server does more than a get request therefore I am using an official google auth library to authenticate and do POST calls like update/append/etc. via the authenticated client (not via endpoint urls like this). On the last attempt I still had some normal get requests in the server with these normal endpoint urls and they completely stopped working with a error status "bad request" yet they are still working in the frontend. I migrated the normal ones in the node server to use the authenticated client as well, while these are still working through the browser (if it's only a simple get request)). I have the need further below in this file to post to google sheets and since I need oauth consent to do that I am posting the user through the node server where I can use the already authenticated client to do the POST request to google sheets.
     const getlastindex = await axios.get(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/USER DB!E:E?key=${GOOGLE_MAPS_API_KEY}`);
     const arr = getlastindex.data.values;
     var r;

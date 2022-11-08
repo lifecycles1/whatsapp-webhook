@@ -32,7 +32,6 @@
     var userfound = [];
     arr.map((item) => {
       if (item[4] === login.username) {
-        console.log("item", item);
         userfound = item;
       }
     });

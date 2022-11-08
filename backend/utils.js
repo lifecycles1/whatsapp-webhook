@@ -1,10 +1,5 @@
 const { google } = require("googleapis");
 
-const gravityCreds = {
-  username: "tr001",
-  password: "String#13",
-};
-
 const bearings = { N: 360, NNE: 22.5, NE: 45, ENE: 67.5, E: 90, ESE: 112.5, SE: 135, SSE: 157.5, S: 180, SSW: 202.5, SW: 225, WSW: 247.5, W: 270, WNW: 292.5, NW: 315, NNW: 337.5 };
 
 const getBearing = (bearing) => {
@@ -42,4 +37,4 @@ const getauthenticatedclient = async () => {
   return client;
 };
 
-module.exports = { gravityCreds, bearings, getBearing, convertTextMsgToCoordinates, getauthenticatedclient };
+module.exports = { getBearing, convertTextMsgToCoordinates, getauthenticatedclient };
