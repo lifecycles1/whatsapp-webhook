@@ -1,0 +1,37 @@
+# example netlify.toml
+[build]
+  command = "vite build"
+  functions = "netlify/functions"
+  publish = "dist"
+
+## Uncomment to use this redirect for Single Page Applications
+## Not needed for static site generators.
+[[redirects]]
+  from = "/api/*"
+  to = "https://whatsapp-webhook-366900.nw.r.appspot.com/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/login"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/signup"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/map"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/report"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/statistics"
+  to = "/index.html"
+  status = 200

@@ -1,0 +1,7 @@
+# Local Netlify folder
+.netlify
+
+/backend/node_modules
+/backend/.env
+/backend/app.yaml
+/backend/ADC.json
