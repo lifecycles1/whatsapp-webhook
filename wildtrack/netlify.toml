@@ -26,12 +26,12 @@
   to = "/index.html"
   status = 200
 
-[[redirects]]
-  from = "/report"
-  to = "/index.html"
-  status = 200
+# [[redirects]]
+#   from = "/report"
+#   to = "/index.html"
+#   status = 200
 
-[[redirects]]
-  from = "/statistics"
-  to = "/index.html"
-  status = 200
+# [[redirects]]
+#   from = "/statistics"
+#   to = "/index.html"
+#   status = 200
