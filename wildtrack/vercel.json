@@ -1,3 +1,0 @@
-{
-  "rewrites": [{ "source": "/saveuser", "destination": "https://whatsapp-webhook-366900.nw.r.appspot.com/saveuser" }]
-}
