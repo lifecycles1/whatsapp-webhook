@@ -8,7 +8,6 @@
     "test:unit": "vitest --environment jsdom"
   },
   "dependencies": {
-    "@googlemaps/js-api-loader": "^1.14.3",
     "@vuepic/vue-datepicker": "^3.5.2",
     "axios": "^1.1.2",
     "crypto-js": "^4.1.1",

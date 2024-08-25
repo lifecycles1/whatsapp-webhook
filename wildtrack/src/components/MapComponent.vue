@@ -1,25 +1,19 @@
 <script>
-  import { computed, ref, onMounted, watch, toRaw, reactive, onUnmounted, provide, unref, onUpdated, nextTick } from "vue";
-  import { Loader } from "@googlemaps/js-api-loader";
-  import { datastore } from "@/datastore";
+  import { onMounted, watch, toRaw, reactive, onUnmounted } from "vue";
+  import { mapDay, mapNight, filterKeyToIndex } from "@/constants";
   import NavBar from "./NavBar.vue";
   import axios from "axios";
 
   export default {
     name: "MapComponent",
-    components: {
-      NavBar,
-    },
+    components: { NavBar },
     async setup() {
-      // watchEffect(() => {});
-
-      const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      const sheetId = import.meta.env.VITE_GOOGLE_SHEETS_ID;
-      const { mapDay, mapNight } = datastore();
       const state = reactive({
         //data arrays
         rows: [],
         columns: [],
+        // display data
+        displayData: [],
         //dropdown selections
         filtered: {},
         //date values
@@ -27,46 +21,24 @@
         dateRange: [],
         //display message
         filterMsg: "",
-        //markers arrays
-        //initial markers
-        initialMarkers: [],
-        initialSightMarks: [],
-        initialFlightPaths: [],
-        //date-only markers
-        dateMarkers: [],
-        dateSightMarks: [],
-        dateFlightPaths: [],
-        //date+filter from dropdown markers
-        dateFilteredMarkers: [],
-        dateFilteredSightMarks: [],
-        dateFilteredFlightPaths: [],
-        //filter-only markers (currently not in use)
-        filteredMarkers: [],
-        filteredSightMarks: [],
-        filteredFlightPaths: [],
-        //map attrs
+        // marker arrays
+        markers: [],
+        sightMarks: [],
+        flightPaths: [],
+        // map attributes
         map: null,
         mapOptions: mapDay,
         nightmode: false,
-        //draw lines
+        // Draw lines
         polygon: null,
         points: [],
       });
-      const loader = new Loader({
-        apiKey: GOOGLE_MAPS_API_KEY,
-        version: "weekly",
-        libraries: ["drawing", "geometry", "places", "localContext", "visualization"],
-      });
 
-      onMounted(async () => {
-        await loader.load();
-        const res = await axios.get(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchGet?dateTimeRenderOption=FORMATTED_STRING&majorDimension=columns&ranges=MAP DB!A:AG&key=${GOOGLE_MAPS_API_KEY}`);
-        state.rows = res.data.valueRanges[0].values[0].map((_, rowIndex) => res.data.valueRanges[0].values.map((col) => col[rowIndex]));
-        state.columns = res.data.valueRanges[0].values;
-        state.map = new google.maps.Map(document.getElementById("map"), state.mapOptions);
-      });
-
-      onUpdated(() => {
+      const initializeMap = async () => {
+        // initialize map
+        const { Map } = await google.maps.importLibrary("maps");
+        state.map = new Map(document.getElementById("map"), state.mapOptions);
+        // drawing functionality
         state.polygon = new google.maps.Polyline({ strokeWeight: 1 });
         state.polygon.setMap(state.map);
         state.map.addListener("click", (e) => {
@@ -75,11 +47,23 @@
           state.polygon.setPath(state.points);
 
           new google.maps.Marker({
-            position: e.latLng,
             map: state.map,
+            position: e.latLng,
             icon: { path: google.maps.SymbolPath.CIRCLE, scale: 3, fillColor: "#4287f5", fillOpacity: 1, strokeColor: "#000000", strokeWeight: 1 },
           });
         });
+      };
+
+      const fetchData = async () => {
+        const res = await axios.get(`${import.meta.env.VITE_APP_API_BASE_URL}/mapdata`);
+        state.rows = res.data.rows;
+        state.columns = res.data.columns;
+        state.displayData = state.rows.slice(1);
+      };
+
+      onMounted(async () => {
+        initializeMap();
+        fetchData();
       });
 
       //map color switch
@@ -96,97 +80,59 @@
         }
       );
 
-      // clear state markers arrays
-      // /////////////////////////////////////////////////////////
-      const clearCurrent = () => {
-        if (state.initialMarkers.length) {
-          for (let i = 0; i < state.initialMarkers.length; i++) {
-            toRaw(state.initialMarkers[i]).setMap(null);
-            toRaw(state.initialSightMarks[i]).setMap(null);
-            toRaw(state.initialFlightPaths[i]).setMap(null);
-          }
-          state.initialMarkers = [];
-          state.initialSightMarks = [];
-          state.initialFlightPaths = [];
-        }
-        if (state.filteredMarkers.length) {
-          for (let i = 0; i < state.filteredMarkers.length; i++) {
-            toRaw(state.filteredMarkers[i]).setMap(null);
-            toRaw(state.filteredSightMarks[i]).setMap(null);
-            toRaw(state.filteredFlightPaths[i]).setMap(null);
-          }
-          state.filteredMarkers = [];
-          state.filteredSightMarks = [];
-          state.filteredFlightPaths = [];
-        }
-        if (state.dateFilteredMarkers.length) {
-          for (let i = 0; i < state.dateFilteredMarkers.length; i++) {
-            toRaw(state.dateFilteredMarkers[i]).setMap(null);
-            toRaw(state.dateFilteredSightMarks[i]).setMap(null);
-            toRaw(state.dateFilteredFlightPaths[i]).setMap(null);
-          }
-          state.dateFilteredMarkers = [];
-          state.dateFilteredSightMarks = [];
-          state.dateFilteredFlightPaths = [];
-        }
-        if (state.dateMarkers.length) {
-          for (let i = 0; i < state.dateMarkers.length; i++) {
-            toRaw(state.dateMarkers[i]).setMap(null);
-            toRaw(state.dateSightMarks[i]).setMap(null);
-            toRaw(state.dateFlightPaths[i]).setMap(null);
-          }
-          state.dateMarkers = [];
-          state.dateSightMarks = [];
-          state.dateFlightPaths = [];
-        }
+      // Clear all markers and paths
+      const clearMarkers = () => {
+        state.markers.forEach((marker) => toRaw(marker).setMap(null));
+        state.sightMarks.forEach((marker) => toRaw(marker).setMap(null));
+        state.flightPaths.forEach((path) => toRaw(path).setMap(null));
+
+        state.markers = [];
+        state.sightMarks = [];
+        state.flightPaths = [];
         state.filterMsg = "";
       };
 
-      // clears datepicker placeholder, dateRange array, filtered array
-      // clearCurrent() is called to clear all state markers arrays
-      // /////////////////////////////////////////////////////////
+      // Reset filters and date picker
       const clearButton = () => {
         state.datepick = null;
         state.dateRange = [];
-        state.filtered = [];
-        clearCurrent();
+        state.filtered = {};
+        clearMarkers();
       };
 
-      // marker generic function
-      // /////////////////////////////////////////////////////////
+      // Add a marker to the map
       const addMarker = (row) => {
-        const position = new google.maps.LatLng(row?.[3], row?.[4]);
+        const position = new google.maps.LatLng(row[3], row[4]);
         const marker = new google.maps.Marker({
           position,
           map: state.map,
           animation: google.maps.Animation.DROP,
           label: "A",
         });
+
         marker.addListener("click", () => {
-          if (marker.getAnimation() !== null) {
-            marker.setAnimation(null);
-          } else {
-            marker.setAnimation(google.maps.Animation.BOUNCE);
-          }
+          marker.setAnimation(marker.getAnimation() ? null : google.maps.Animation.BOUNCE);
         });
+
         const infoWindow = new google.maps.InfoWindow({
           content: `<div style="width: 190px">
-          <p style="font-weight:500; font-size:16px">${row?.[5]}</p>
-          <p style="font-size:14px">${row?.[3]},${row?.[4]}</p>
-          <p style="font-size:14px">+${row?.[1]}</p>
-          <p style="font-size:14px">${new Date(row?.[2]).toLocaleString()}</p>
+            <p style="font-weight:500; font-size:16px">${row[5]}</p>
+            <p style="font-size:14px">${row[3]},${row[4]}</p>
+            <p style="font-size:14px">+${row[1]}</p>
+            <p style="font-size:14px">${new Date(row[2]).toLocaleString()}</p>
           </div>`,
         });
+
         marker.addListener("click", () => {
           infoWindow.open(state.map, marker);
         });
+
         return marker;
       };
 
-      // sight mark generic function
-      // /////////////////////////////////////////////////////////
+      // Add a sight mark to the map
       const addSightMark = (row) => {
-        const position = new google.maps.LatLng(row?.[6], row?.[7]);
+        const position = new google.maps.LatLng(row[6], row[7]);
         const marker = new google.maps.Marker({
           position,
           map: state.map,
@@ -196,33 +142,32 @@
             scaledSize: new google.maps.Size(32, 32),
           },
         });
+
         marker.addListener("click", () => {
-          if (marker.getAnimation() !== null) {
-            marker.setAnimation(null);
-          } else {
-            marker.setAnimation(google.maps.Animation.BOUNCE);
-          }
+          marker.setAnimation(marker.getAnimation() ? null : google.maps.Animation.BOUNCE);
         });
+
         const infoWindow = new google.maps.InfoWindow({
           content: `<div style="width: 190px">
-          <p style="font-weight:500; font-size:16px">${row?.[5]}</p>
-          <p style="font-size:14px">${row?.[6]},${row?.[7]}</p>
-          <p style="font-size:14px">+${row?.[1]}</p>
-          <p style="font-size:14px">${new Date(row?.[2]).toLocaleString()}</p>
+            <p style="font-weight:500; font-size:16px">${row[5]}</p>
+            <p style="font-size:14px">${row[6]},${row[7]}</p>
+            <p style="font-size:14px">+${row[1]}</p>
+            <p style="font-size:14px">${new Date(row[2]).toLocaleString()}</p>
           </div>`,
         });
+
         marker.addListener("click", () => {
           infoWindow.open(state.map, marker);
         });
+
         return marker;
       };
 
-      // flight path generic function
-      // /////////////////////////////////////////////////////////
+      // Add a flight path to the map
       const addFlightPath = (row) => {
         const path = [
-          { lat: parseFloat(row?.[3]), lng: parseFloat(row?.[4]) },
-          { lat: parseFloat(row?.[6]), lng: parseFloat(row?.[7]) },
+          { lat: parseFloat(row[3]), lng: parseFloat(row[4]) },
+          { lat: parseFloat(row[6]), lng: parseFloat(row[7]) },
         ];
         const randomHex = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
         const flightPath = new google.maps.Polyline({
@@ -239,50 +184,13 @@
             },
           ],
         });
+
         flightPath.setMap(state.map);
         return flightPath;
       };
 
-      // initial markers rendering block
-      // /////////////////////////////////////////////////////////
-      watch(
-        () => state.rows,
-        (rows) => {
-          if (rows) {
-            //initial
-            rows.slice(1).map((row) => {
-              const marker = addMarker(row);
-              state.initialMarkers.push(marker);
-              const sightMark = addSightMark(row);
-              state.initialSightMarks.push(sightMark);
-              const flightPath = addFlightPath(row);
-              state.initialFlightPaths.push(flightPath);
-              state.filterMsg = "showing all data";
-            });
-          }
-        }
-      );
-
-      // show button  re-show all markers data
-      // /////////////////////////////////////////////////////////
-      const show = () => {
-        clearCurrent();
-        state.rows.slice(1).map((row) => {
-          const marker = addMarker(row);
-          state.initialMarkers.push(marker);
-
-          const sightMark = addSightMark(row);
-          state.initialSightMarks.push(sightMark);
-
-          const flightPath = addFlightPath(row);
-          state.initialFlightPaths.push(flightPath);
-          state.filterMsg = "Currenty showing all data";
-        });
-      };
-
-      // create daterange array from datepicker component
-      // /////////////////////////////////////////////////////////
-      const createdateRange = (startDate, endDate) => {
+      // Create date range array from datepicker component
+      const createDateRange = (startDate, endDate) => {
         const date = new Date(startDate);
         while (date <= endDate) {
           state.dateRange.push(new Date(date).toLocaleDateString());
@@ -291,74 +199,108 @@
         return state.dateRange;
       };
 
-      // datepicker filter display data (triggered by selecting dates)
-      // /////////////////////////////////////////////////////////
       watch(
-        () => state.datepick,
-        (dateSnap) => {
-          if (dateSnap) {
-            if (state.dateRange.length > 0) {
-              state.dateRange.length = 0;
-            }
-            clearCurrent();
-            createdateRange(dateSnap[0], dateSnap[1]);
-            if (Object.keys(state.filtered).length) {
-              for (const p in state.filtered) {
-                if (p === "User") {
-                  state.rows.slice(1).map((row) => {
-                    if (row?.[0] === state.filtered[p]) {
-                      if (state.dateRange.includes(new Date(row?.[2]).toLocaleDateString())) {
-                        const marker = addMarker(row);
-                        state.dateFilteredMarkers.push(marker);
-                        const sightMark = addSightMark(row);
-                        state.dateFilteredSightMarks.push(sightMark);
-                        const flightPath = addFlightPath(row);
-                        state.dateFilteredFlightPaths.push(flightPath);
-                        state.filterMsg = `data for ${row?.[0]} for the period ${dateSnap[0].toLocaleDateString()} - ${dateSnap[1].toLocaleDateString()}`;
-                      }
-                    }
-                  });
-                }
-              }
-              // else if datepicker is used on its own
-            } else if (!Object.keys(state.filtered).length) {
-              state.rows.slice(1).map((row) => {
-                if (state.dateRange.includes(new Date(row?.[2]).toLocaleDateString())) {
-                  const marker = addMarker(row);
-                  state.dateMarkers.push(marker);
-
-                  const sightMark = addSightMark(row);
-                  state.dateSightMarks.push(sightMark);
-
-                  const flightPath = addFlightPath(row);
-                  state.dateFlightPaths.push(flightPath);
-                  state.filterMsg = `data for period ${dateSnap[0].toLocaleDateString()} - ${dateSnap[1].toLocaleDateString()}`;
-                }
-              });
-            }
+        () => state.displayData,
+        (rows) => {
+          if (rows?.length) {
+            clearMarkers();
+            rows.forEach((row) => {
+              state.markers.push(addMarker(row));
+              state.sightMarks.push(addSightMark(row));
+              state.flightPaths.push(addFlightPath(row));
+            });
+            state.filterMsg = "Currently showing all data";
           }
         }
       );
 
-      //calculate distance between two points  (not in use at the moment)
-      const haversineDistance = (pos1, pos2) => {
-        const R = 3958.8; //radius of the Earth in miles
-        const rlat1 = pos1.lat * (Math.PI / 180); // Convert degrees to radians
-        const rlat2 = pos2.lat * (Math.PI / 180); // Convert degrees to radians
-        const difflat = rlat2 - rlat1; // Radian difference (latitudes)
-        const difflon = (pos2.lng - pos1.lng) * (Math.PI / 180); // Radian difference (longitudes)
+      watch(
+        () => [state.datepick, JSON.stringify(state.filtered)],
+        ([dateSnap, filters], [prevDateSnap, prevFilters]) => {
+          let filteredData;
+          if (dateSnap !== prevDateSnap) {
+            state.dateRange.length = 0;
+            clearMarkers();
+            if (dateSnap) {
+              // Apply date range
+              state.dateRange = createDateRange(dateSnap[0], dateSnap[1]);
+              filteredData = state.rows.filter((row) => state.dateRange.includes(new Date(row?.[2]).toLocaleDateString()));
+              state.filterMsg = `Data for the period ${dateSnap[0].toLocaleDateString()} - ${dateSnap[1].toLocaleDateString()}`;
+            } else {
+              filteredData = state.rows;
+              state.filterMsg = "Currently showing all data";
+            }
+            if (filters) {
+              // Apply filters
+              Object.entries(JSON.parse(filters)).forEach(([key, value]) => {
+                if (value) {
+                  filteredData = filteredData.filter((row) => row?.[filterKeyToIndex[key]] === value);
+                }
+              });
+              state.filterMsg += ` and filtered for ${Object.entries(JSON.parse(filters))
+                .map(([key, value]) => (value ? `${key}: ${value}` : ""))
+                .filter((x) => x)
+                .join(", ")}`;
+            }
+          }
+          if (filters !== prevFilters) {
+            clearMarkers();
+            if (filters) {
+              // Apply filters
+              Object.entries(JSON.parse(filters)).forEach(([key, value]) => {
+                if (value) {
+                  filteredData = state.rows.filter((row) => row?.[filterKeyToIndex[key]] === value);
+                }
+              });
+              state.filterMsg = `Data filtered for ${Object.entries(JSON.parse(filters))
+                .map(([key, value]) => (value ? `${key}: ${value}` : ""))
+                .filter((x) => x)
+                .join(", ")}`;
+            }
+            if (dateSnap) {
+              // Apply date range
+              state.dateRange = createDateRange(dateSnap[0], dateSnap[1]);
+              filteredData = filteredData.filter((row) => state.dateRange.includes(new Date(row?.[2]).toLocaleDateString()));
+              state.filterMsg += ` and for the period ${dateSnap[0].toLocaleDateString()} - ${dateSnap[1].toLocaleDateString()}`;
+            }
+          }
+          state.displayData = filteredData;
+        },
+        { deep: true }
+      );
 
-        const d = 2 * R * Math.asin(Math.sqrt(Math.sin(difflat / 2) * Math.sin(difflat / 2) + Math.cos(rlat1) * Math.cos(rlat2) * Math.sin(difflon / 2) * Math.sin(difflon / 2)));
-        return d;
+      // Re-show all data markers
+      const showAll = () => {
+        clearMarkers();
+        state.rows.slice(1).forEach((row) => {
+          state.markers.push(addMarker(row));
+          state.sightMarks.push(addSightMark(row));
+          state.flightPaths.push(addFlightPath(row));
+        });
+        state.filterMsg = "Currently showing all data";
       };
 
+      const getUniqueNonEmptyValues = (item) => {
+        return [...new Set(item?.slice(1))].filter((val) => val !== "" && val !== null);
+      };
+
+      // //calculate distance between two points  (not in use at the moment)
+      // const haversineDistance = (pos1, pos2) => {
+      //   const R = 3958.8; //radius of the Earth in miles
+      //   const rlat1 = pos1.lat * (Math.PI / 180); // Convert degrees to radians
+      //   const rlat2 = pos2.lat * (Math.PI / 180); // Convert degrees to radians
+      //   const difflat = rlat2 - rlat1; // Radian difference (latitudes)
+      //   const difflon = (pos2.lng - pos1.lng) * (Math.PI / 180); // Radian difference (longitudes)
+
+      //   const d = 2 * R * Math.asin(Math.sqrt(Math.sin(difflat / 2) * Math.sin(difflat / 2) + Math.cos(rlat1) * Math.cos(rlat2) * Math.sin(difflon / 2) * Math.sin(difflon / 2)));
+      //   return d;
+      // };
+
       onUnmounted(() => {
-        console.log("unmounted");
-        clearCurrent();
-        state.datepick = "";
+        clearMarkers();
       });
 
-      return { clearCurrent, clearButton, show, state };
+      return { clearButton, showAll, getUniqueNonEmptyValues, state };
     },
   };
 </script>
@@ -371,45 +313,30 @@
         <Datepicker placeholder="select dates" class="rounded-md mb-5" v-model="state.datepick" range></Datepicker>
         <!-- select a filter option -->
         <div>
-          <div class="mt-2" v-for="(item, index) in [state.columns[0]].concat(state.columns.slice(10, 18))" :key="index">
+          <div class="mt-2" v-for="(item, index) in [state.columns[0]].concat(state.columns.slice(10, 15))" :key="index">
             <label>{{ item?.[0] }}</label>
             <select
               v-model="state.filtered[item?.[0]]"
               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
             >
-              <option v-for="(i, idx) in new Set(item?.slice(1))" :key="idx" class="h-10">{{ i }}</option>
+              <!-- <option v-for="(i, idx) in new Set(item?.slice(1))" :key="idx" class="h-10">{{ i }}</option> -->
+              <option v-for="(i, idx) in getUniqueNonEmptyValues(item)" :key="idx" class="h-10">{{ i }}</option>
             </select>
           </div>
         </div>
       </div>
       <div class="w-full">
-        <!-- div mini bar above the map -->
-        <div class="flex justify-center space-x-36">
-          <!-- your position div -->
-          <div class="flex space-x-2">div</div>
-          <!-- distance div -->
-          <div class="flex space-x-2">div</div>
-          <!-- position picker div -->
-          <div class="flex space-x-2">div</div>
-        </div>
         <!-- map -->
         <div id="map" style="min-width: 75%; height: 88vh" class="mt-1 w-full mr-1"></div>
         <div class="flex">
-          <!-- radio buttons -->
-          <div class="ml-5 mt-7 grid grid-cols-2 w-48 gap-2">
-            <div class="space-x-1" v-for="(item, index) in state.columns.slice(18)" :key="index">
-              <input type="radio" :value="item" />
-              <label :for="index">{{ item?.[0] }}</label>
-            </div>
-          </div>
           <!-- show and clear buttons -->
-          <div class="flex flex-col mt-8 ml-5">
-            <button type="button" @click="show" class="bg-slate-400 rounded-md px-2 w-16 h-8 hover:bg-slate-500">showall</button>
-            <button type="button" @click="clearButton" class="mt-8 bg-slate-400 hover:bg-slate-500 rounded-md px-2 w-16 h-8">clear</button>
+          <div class="flex mt-8 ml-5 space-x-10 pb-6">
+            <button type="button" @click="showAll" class="bg-slate-400 rounded-md px-2 w-16 h-8 hover:bg-slate-500">showall</button>
+            <button type="button" @click="clearButton" class="bg-slate-400 hover:bg-slate-500 rounded-md px-2 w-16 h-8">clear</button>
           </div>
           <!-- filter message -->
           <div class="">
-            <p class="mt-7 ml-28 font-semibold w-52 break-all">{{ state.filterMsg }}</p>
+            <p class="mt-7 ml-28 font-semibold w-[500px]">{{ state.filterMsg }}</p>
           </div>
           <!-- helper div, just pushing the toggle button -->
           <div id="pusher" :class="[`flex-grow`]"></div>

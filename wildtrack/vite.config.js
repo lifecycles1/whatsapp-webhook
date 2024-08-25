@@ -12,12 +12,4 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
-  server: {
-    proxy: {
-      "/saveuser": {
-        target: "https://whatsapp-webhook-366900.nw.r.appspot.com",
-        changeOrigin: true,
-      },
-    },
-  },
 });

@@ -54,10 +54,7 @@
     // authenticate.then((client) => {}); //authenticate client doesnt work here
     // 2.1 post user via backend
     await axios
-      // .post("/saveuser", {
-      //  ^^^ this line is for localhost with config proxy or VERCEL deployment
-      .post("/api/saveuser", {
-        //   ^^^ this line is for NETLIFY deployment
+      .post(`${import.meta.env.VITE_APP_API_BASE_URL}/saveuser`, {
         firstname: signup.firstname,
         lastname: signup.lastname,
         telephone: signup.telephone,

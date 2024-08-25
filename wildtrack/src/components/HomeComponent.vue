@@ -2,8 +2,6 @@
   import { onMounted, reactive } from "vue";
   import { useUserStore } from "@/stores/userStore";
   import NavBar from "../components/NavBar.vue";
-  const sheetId = import.meta.env.VITE_GOOGLE_SHEETS_ID;
-  const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   // const navClickMapToggle = () => {
   //   console.log("filterMsg", info.filterMsg);
   //   const x = document.getElementById("map");

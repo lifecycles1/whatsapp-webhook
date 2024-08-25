@@ -1,7 +1,9 @@
 const express = require("express");
+const cors = require("cors");
+const app = express();
 const router = require("express").Router();
-const body_parser = require("body-parser");
-const app = express().use(body_parser.json());
+app.use(express.json());
+app.use(cors());
 const fs = require("fs");
 require("dotenv").config();
 const axios = require("axios");
@@ -162,7 +164,7 @@ router.post("/messages", async (req, res) => {
                   const impression = res.data?.data?.[4].coordinates?.[0].dates?.[0].value;
                   //append map db
                   client.spreadsheets.values
-                    .append({ spreadsheetId, range: "MAP DB!A:AG", valueInputOption: "RAW", resource: { values: [[user, telephone, dateTime, originalLat, originalLng, text, sightLat, sightLng, null, null, null, null, null, winddir, windspeed, temperature, precipitation, impression]] } })
+                    .append({ spreadsheetId, range: "MAP DB!A:O", valueInputOption: "RAW", resource: { values: [[user, telephone, dateTime, originalLat, originalLng, text, sightLat, sightLng, null, null, winddir, windspeed, temperature, precipitation, impression]] } })
                     .then((res) => {
                       console.log("appended MAP DB with a loc-sight-weather message", res.data);
                     })
@@ -329,6 +331,26 @@ router.post("/saveuser", async (req, res) => {
   }
 });
 
+router.get("/mapdata", async (req, res) => {
+  try {
+    const client = await getauthenticatedclient();
+
+    const response = await client.spreadsheets.values.batchGet({
+      spreadsheetId,
+      ranges: ["MAP DB!A:O"],
+      majorDimension: "columns",
+      dateTimeRenderOption: "FORMATTED_STRING",
+    });
+
+    const rows = response.data.valueRanges[0].values[0].map((_, rowIndex) => response.data.valueRanges[0].values.map((col) => col[rowIndex]));
+    const columns = response.data.valueRanges[0].values;
+    res.status(200).json({ rows, columns });
+  } catch (error) {
+    console.log("error", error);
+    return res.sendStatus(500);
+  }
+});
+
 // webhook endpoint for trello
 // the webhook registered on this endpoint has the following id "63bdddb40b1bbc00c222019a"
 router
@@ -377,4 +399,4 @@ router
 
 app.use("/", router);
 
-app.listen(8081, () => console.log(`Server started on port 8081`));
+app.listen(8080, () => console.log(`Server started on port 8080`));
